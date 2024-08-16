@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "our_profile": "Our Profile",
+    "media": "Media",
+    "about_us": "About Us",
+    "login": "Login"
+  },
+  "hex": {
+    "tunnelling": "Tunnelling",
+    "digitalibs": "Digitalibs",
+    "urban": "Urban Transformation",
+    "systems": "Rail & Metro Systems",
+    "roads": "Roads and Expressway",
+    "renewable": "Renewable energy",
+    "bridges": "Bridges"
+  }
+}

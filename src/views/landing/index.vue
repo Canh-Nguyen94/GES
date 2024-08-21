@@ -7,6 +7,7 @@ import ThreeGlobe from './globe/ThreeGlobe.vue'
 import LandingFAQs from './LandingFAQs.vue'
 import LandingSlider from './LandingSlider.vue'
 import LandingFooter from './LandingFooter.vue'
+import Projects from './projects/Projects.vue'
 </script>
 <template>
   <div class="h-[100vh] overflow-y-scroll">
@@ -15,7 +16,7 @@ import LandingFooter from './LandingFooter.vue'
     <ThreeGlobe />
     <div class="relative">
       <div class="px-10 absolute top-[-200px]">
-        <h1 class="text-background mb-4">vertex</h1>
+        <h1 class="text-background uppercase mb-4">vertex</h1>
         <h4 class="text-background mb-4">Leveraging GIS technology</h4>
         <h4 class="text-background mb-4">
           to support BIM & CAD data for construction & engineering
@@ -23,6 +24,7 @@ import LandingFooter from './LandingFooter.vue'
       </div>
       <LandingInfor />
       <HexMenu />
+      <Projects />
       <LandingSlider />
       <LandingFAQs />
     </div>

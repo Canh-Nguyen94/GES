@@ -11,10 +11,10 @@ const { t } = useI18n()
 <template>
   <div class="flex justify-between pt-4 px-10 bg">
     <Icon icon="project-logo" :size="56" />
-    <div class="flex gap-2 items-center">
+    <div class="flex gap-3 items-center">
       <p v-for="item in navHeaderItems" :id="item.id" :key="item.id">
         <RouterLink :to="item.to">
-          <span class="text-background cursor-pointer">
+          <span class="text-background uppercase cursor-pointer">
             {{ t(item.name) }}
           </span>
         </RouterLink>
@@ -25,6 +25,7 @@ const { t } = useI18n()
 
 <style scoped>
 .bg {
+  z-index: -1;
   background: #0f2027;
   background: -webkit-linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
   background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);

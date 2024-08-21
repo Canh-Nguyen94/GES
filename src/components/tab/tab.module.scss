@@ -1,0 +1,30 @@
+.tab-item-style {
+  padding: 15px 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 4px solid;
+  border-color: var(--c-border-tab);
+  &.active {
+    border-color: var(--c-text-gamuda-red);
+  }
+
+  .icon-style {
+    width: 27px;
+    height: 27px;
+    fill: var(--c-border-gamuda-inactive);
+    &.active {
+      fill: var(--c-border-gamuda-focus);
+    }
+  }
+
+  .text-style {
+    font-size: 1rem;
+    color: var(--c-text-gamuda-inactive);
+    &.active {
+      font-weight: 600;
+      color: var(--c-text-gamuda-black);
+    }
+  }
+}

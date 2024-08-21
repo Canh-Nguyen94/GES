@@ -5,6 +5,9 @@ import earthmap from '@assets/textures/world_alpha_mini.jpg'
 import gsap from 'gsap'
 import { useElementSize } from '@vueuse/core'
 import { computed, onMounted, ref } from 'vue'
+import { calcPosFromLatLngRad, places } from '@helpers/globe.js'
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
+import pin from '@assets/images/pin.png'
 
 const globe = ref(null)
 const globeContainer = ref(null)
@@ -48,9 +51,6 @@ const fragment = `
   }
 `
 
-// const container = document.querySelector('.container')
-const canvas = document.querySelector('.canvas')
-
 let sizes,
   scene,
   camera,
@@ -65,33 +65,32 @@ let sizes,
   baseMesh,
   minMouseDownFlag,
   mouseDown,
-  grabbing
+  grabbing,
+  labelRenderer,
+  sceneGroup
 const aspectRatio = computed(() => width.value / height.value)
 const setScene = () => {
   sizes = {
     width: width.value,
     height: height.value
   }
-  // console.log(width.value, height.value)
-  // var rect = globe.value.parentNode.getBoundingClientRect()
-  // console.log(rect.width, rect.height)
-  // globe.value.width = rect.width
-  // globe.value.height = rect.height
-  scene = new THREE.Scene()
 
+  scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(35, aspectRatio.value, 0.01, 1000)
-  camera.position.z = 100
+  camera.position.set(0, 10, 500)
 
   renderer = new THREE.WebGLRenderer({
     canvas: globe.value,
     antialias: false,
-    alpha: true
+    alpha: true,
+    shadowMapEnabled: false
   })
   renderer.setSize(width.value, height.value)
   renderer.setPixelRatio(window.devicePixelRatio)
 
   const pointLight = new THREE.PointLight(0x081b26, 17, 200)
   pointLight.position.set(-50, 0, 60)
+  pointLight.castShadow = false
   scene.add(pointLight)
   scene.add(new THREE.HemisphereLight(0xffffbb, 0x080820, 1.5))
 
@@ -102,25 +101,101 @@ const setScene = () => {
   mouseDown = false
   grabbing = false
 
+  labelRenderer = new CSS2DRenderer()
+  labelRenderer.setSize(width.value, height.value)
+  labelRenderer.domElement.style.position = 'absolute'
+  labelRenderer.domElement.style.top = '0px'
+  labelRenderer.domElement.style.pointerEvents = 'none'
+  const container = document.getElementById('globeContain')
+  container.appendChild(labelRenderer.domElement)
+
   setControls()
   setBaseSphere()
   setShaderMaterial()
   setMap()
+  setPlaces()
   resize()
-  listenTo()
+  // listenTo()
   render()
 }
 
 const setControls = () => {
   controls = new OrbitControls(camera, renderer.domElement)
+  controls.target.set(0, 0, 0)
+  controls.update()
   controls.autoRotate = true
-  controls.autoRotateSpeed = 1.2
+  controls.autoRotateSpeed = 2
   controls.enableDamping = true
   controls.enableRotate = true
   controls.enablePan = false
   controls.enableZoom = false
-  controls.minPolarAngle = Math.PI / 2 - 0.5
-  controls.maxPolarAngle = Math.PI / 2 + 0.5
+  controls.minPolarAngle = Math.PI / 2 - 1
+  controls.maxPolarAngle = Math.PI / 2 + 1
+}
+
+const setPlaces = () => {
+  const group = new THREE.Group()
+  places.forEach((point, index) => {
+    let pos = calcPosFromLatLngRad(point.lat, point.lng, 20)
+
+    const place = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 20, 20),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    )
+    place.position.set(pos.x, pos.y + 10, pos.z)
+    place.name = point.name
+    group.add(place)
+
+    const p = document.createElement('p')
+    p.style.color = 'background'
+    p.style.visibility = 'hidden'
+    p.textContent = point.name
+
+    const img = document.createElement('img')
+    img.src = pin
+    img.style.width = '40px'
+    img.style.height = '40px'
+    img.style.visibility = 'hidden'
+    img.style.boxShadow = 'none'
+    img.style.outline = 'none'
+
+    const pContainer = document.createElement('div')
+
+    pContainer.appendChild(p)
+    pContainer.appendChild(img)
+    const cPointLabel = new CSS2DObject(pContainer)
+    cPointLabel.position.set(pos.x - 1, pos.y + 12, pos.z)
+    if (point.name === 'Qatar') {
+      p.style.transform = 'translate(30px, 30px)'
+    }
+    group.add(cPointLabel)
+
+    const updateVisibility = () => {
+      const cameraPosition = camera.position
+      const distanceToPlace = cameraPosition.distanceTo(place.position)
+      const distanceToBaseMeshCenter = cameraPosition.distanceTo(new THREE.Vector3(0, 10, 0))
+
+      if (distanceToPlace > distanceToBaseMeshCenter) {
+        // Place is behind the globe
+        place.visible = false
+        cPointLabel.visible = false
+        p.style.visibility = 'hidden'
+        img.style.visibility = 'hidden'
+      } else {
+        place.visible = true
+        cPointLabel.visible = true
+        p.style.visibility = 'visible'
+        img.style.visibility = 'visible'
+      }
+    }
+    const animate = () => {
+      updateVisibility()
+      requestAnimationFrame(animate)
+    }
+
+    animate()
+  })
+  scene.add(group)
 }
 
 const setBaseSphere = () => {
@@ -132,6 +207,7 @@ const setBaseSphere = () => {
   })
   baseMesh = new THREE.Mesh(baseSphere, baseMaterial)
   baseMesh.position.y = 10
+
   scene.add(baseMesh)
 }
 
@@ -184,17 +260,6 @@ const setMap = () => {
     return visible
   }
 
-  const calcPosFromLatLonRad = (lon, lat) => {
-    var phi = (90 - lat) * (Math.PI / 180)
-    var theta = (lon + 180) * (Math.PI / 180)
-
-    const x = -(dotSphereRadius * Math.sin(phi) * Math.cos(theta))
-    const z = dotSphereRadius * Math.sin(phi) * Math.sin(theta)
-    const y = dotSphereRadius * Math.cos(phi)
-
-    return new THREE.Vector3(x, y, z)
-  }
-
   const createMaterial = (timeValue) => {
     const mat = material.clone()
     mat.uniforms.u_time.value = timeValue * Math.sin(Math.random())
@@ -205,6 +270,7 @@ const setMap = () => {
   const setDots = () => {
     const dotDensity = 2.5
     let vector = new THREE.Vector3()
+    const dotsGroup = new THREE.Group()
 
     for (let lat = 90, i = 0; lat > -90; lat--, i++) {
       const radius = Math.cos(Math.abs(lat) * (Math.PI / 180)) * dotSphereRadius
@@ -216,8 +282,8 @@ const setMap = () => {
 
         if (!visibilityForCoordinate(long, lat)) continue
 
-        vector = calcPosFromLatLonRad(long, lat)
-
+        const pos = calcPosFromLatLngRad(lat, long, 20)
+        vector = new THREE.Vector3(pos.x, pos.y, pos.z)
         const dotGeometry = new THREE.CircleGeometry(0.1, 5)
         dotGeometry.lookAt(vector)
         dotGeometry.translate(vector.x, vector.y, vector.z)
@@ -225,9 +291,10 @@ const setMap = () => {
         const m = createMaterial(i)
         const mesh = new THREE.Mesh(dotGeometry, m)
         mesh.position.y = 10
-        scene.add(mesh)
+        dotsGroup.add(mesh)
       }
     }
+    scene.add(dotsGroup)
   }
 
   const image = new Image()
@@ -263,6 +330,7 @@ const resize = () => {
   camera.updateProjectionMatrix()
 
   renderer.setSize(sizes.width, sizes.height)
+  labelRenderer.setSize(sizes.width, sizes.height)
 }
 
 const mousemove = (event) => {
@@ -331,6 +399,7 @@ const render = () => {
     el.uniforms.u_time.value += twinkleTime
   })
 
+  labelRenderer.render(scene, camera)
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(render.bind(this))
@@ -342,7 +411,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="globeContainer" class="w-full h-[60vh] relative">
+  <div id="globeContain" ref="globeContainer" class="w-full h-[60vh] relative">
     <canvas ref="globe" class="canvas bg"></canvas>
   </div>
 </template>
@@ -350,12 +419,10 @@ onMounted(() => {
 <style scoped>
 .canvas {
   width: 100%;
-  pointer-events: none;
   position: absolute;
   display: block;
   top: 0px;
   left: 0px;
-  z-index: -2;
 }
 .bg {
   background: #0f2027;
